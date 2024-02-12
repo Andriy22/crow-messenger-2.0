@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { UsersModule } from './users/users.module';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -13,15 +14,16 @@ import { UsersModule } from './users/users.module';
       username: `${process.env.DATABASE_USER}`,
       password: `${process.env.DATABASE_PASSWORD}`,
       database: `${process.env.DATABASE_NAME}`,
-      entities: [],
+      entities: ['dist/**/*.entity{.ts,.js}'],
       synchronize: true,
       options: {
         trustServerCertificate: true,
       },
+      autoLoadEntities: true,
     }),
     UsersModule,
   ],
-  controllers: [],
+  controllers: [AppController],
   providers: [],
 })
 export class AppModule {}
