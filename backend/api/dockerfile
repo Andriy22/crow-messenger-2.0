@@ -1,0 +1,23 @@
+# Use Node.js version 20 Alpine image from the official Docker Hub repository
+FROM node:20-alpine
+
+# Set the working directory inside the container to /app
+WORKDIR /app
+
+# Copy package.json and package-lock.json (if available) to the working directory
+COPY package*.json ./
+
+# Install project dependencies
+# Using `npm ci` is recommended in CI/CD environments for faster, more reliable builds
+RUN npm install
+
+# Copy the rest of the application code to the working directory
+COPY . .
+
+# Build the application (if needed)
+# Uncomment the next line if your project requires a build step (e.g., TypeScript, React, Angular, Vue projects)
+RUN npm run build
+
+# Specify the command to run the application
+# This should match the command used to start your app in development or production mode
+CMD ["npm", "run", "start:dev"]
