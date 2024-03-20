@@ -72,6 +72,8 @@ namespace API.Hubs
             {
                 await Groups.AddToGroupAsync(Context.ConnectionId, chat.Id.ToString());
             }
+
+            await Clients.Caller.SendAsync("Connected");
         }
 
         public override async Task OnDisconnectedAsync(Exception? exception)
