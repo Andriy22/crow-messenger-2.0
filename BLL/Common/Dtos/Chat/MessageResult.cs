@@ -11,6 +11,7 @@ namespace BLL.Common.Dtos.Chat
         public required List<MessageAttachmentResult> Attachments { get; set; }
         public required DateTime CreatedAt { get; set; }
         public long ChatId { get; set; }
+        public long ReplyMessageId { get; set; }
         public DateTime? SeenAt { get; set; }
     }
 }
