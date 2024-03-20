@@ -75,11 +75,21 @@ class MessageHelper {
 
   MessageHelper(this.user);
 
-  SendMessage(User receiver, String message) {
-    SendMessageById(receiver.id, message);
+  SendMessageByChatID(int chatId, String message) {
+    var auth = http.post(
+      Uri.parse('${URL}/api/chat/send-message-to-chat'),
+      headers: <String, String>{
+        'Authorization': "bearer ${user!.accessToken}",
+      },
+      body: <String, dynamic>{
+        "message": message,
+        "messageType": 0.toString(),
+        "chatId": chatId.toString(),
+      },
+    ).then((value) => print(value.body)).catchError((x) => print(x));
   }
 
-  SendMessageById(String receiverId, String message) {
+  SendMessageByUserID(String receiverId, String message) {
     var auth = http.post(
       Uri.parse('${URL}/api/chat/send-private-message'),
       headers: <String, String>{

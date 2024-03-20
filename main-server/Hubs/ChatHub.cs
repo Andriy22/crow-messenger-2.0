@@ -35,7 +35,7 @@ namespace API.Hubs
         public async Task GetAllChatsAsync(string userId)
         {
             var ownerId = Context?.User?.Identity?.Name ?? throw new Exception("Not authorized");
-            await Clients.Caller.SendAsync("ReceivedAllMessagesWithUser", await _privateChatService.GetMessagesWithUserAsync(userId, ownerId));
+            await Clients.Caller.SendAsync("ReceivedChatMessages", await _privateChatService.GetMessagesWithUserAsync(userId, ownerId));
         }
 
         [HubMethodName("delete-message")]

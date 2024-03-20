@@ -35,6 +35,7 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   late TextEditingController _controller;
   late Account _account;
+  final ScrollController _scrollController = ScrollController();
 
   Chat? currentChat = null;
   List<MessageResponse> messages = [];
@@ -44,15 +45,26 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
     _controller = TextEditingController();
     _account = Account.Login("admin", "adminhuesos", (list) {
-      messages = list;
-    }, (message) {
+      setState(() {
+        messages = list;
+      });
+      scrollDown(1000);
+    }, (chats) {
+      setState(() { });
+    },
+    (message) {
       if(currentChat == null) {
+        setState(() { });
         return;
       }
 
       if(message.chatId == currentChat!.id) {
         messages.add(message);
       }
+      setState(() {
+        scrollDown(500);
+      });
+
     });
   }
 
@@ -64,14 +76,14 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _incrementCounter() {
     setState(() {
-      _account.messageHelper.SendMessageById("c79d8c6f-7b38-4b1d-953c-05e585f697bd", "sosi hui");
+      _account.messageHelper.SendMessageByUserID("c79d8c6f-7b38-4b1d-953c-05e585f697bd", "sosi hui");
     });
   }
 
   void _incrementMessages(Chat chat) {
     setState(() {
       currentChat = chat;
-      _account.GetMessages(chat.users[0]);
+      _account.GetMessages(chat);
     });
   }
 
@@ -186,6 +198,9 @@ class _MyHomePageState extends State<MyHomePage> {
   List<Widget> drawMessages(Chat userId) {
     List<Widget> widgets = [];
     for (int i = 0; i < messages.length; i++) {
+      if(messages[i].message == null) {
+        continue;
+      }
       widgets.add(drawMessage(messages[i]));
     }
     return widgets;
@@ -258,9 +273,11 @@ class _MyHomePageState extends State<MyHomePage> {
         IconButton(
             onPressed: () {
               setState(() {
-                // messages[userId!]
-                //     .add(Message(true, _controller.text, DateTime.now()));
-                _account.messageHelper.SendMessageById(currentChat!.users[0].id, _controller.text);
+                if(_controller.text.isEmpty)
+                {
+                  return;
+                }
+                _account.messageHelper.SendMessageByChatID(currentChat!.id, _controller.text);
               });
             },
             icon: const Icon(Icons.send))
@@ -268,18 +285,28 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  void scrollDown(int milliseconds) {
+    _scrollController.animateTo(
+      _scrollController.position.maxScrollExtent,
+      duration: Duration(milliseconds: milliseconds),
+      curve: Curves.fastOutSlowIn,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    var scrollView = SingleChildScrollView(
+      controller: _scrollController,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: currentChat == null ? drawChats() : drawMessages(currentChat!),
+      ));
+
     return Scaffold(
       resizeToAvoidBottomInset: false,
       appBar: drawAppBar(),
-      body: SingleChildScrollView(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: currentChat == null ? drawChats() : drawMessages(currentChat!),
-        ),
-      ),
+      body: scrollView,
       floatingActionButton: currentChat == null
           ? FloatingActionButton(
               onPressed: _incrementCounter,
