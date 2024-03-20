@@ -1,9 +1,8 @@
-﻿using BLL.Common.Dtos.Chat;
-using DAL.Enums;
+﻿using DAL.Enums;
 
-namespace BLL.Common.Dtos.PrivateChat
+namespace BLL.Common.Dtos.Chat
 {
-    public class PrivateMessageResult
+    public class MessageResult
     {
         public long Id { get; set; }
         public string? Message { get; set; }

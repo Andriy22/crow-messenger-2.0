@@ -7,6 +7,7 @@ namespace DAL.Entities
     {
         public long Id { get; set; }
         public required string ImagePath { get; set; }
+        public string? Title { get; set; }
         public ChatType ChatType { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime LastUpdatedAt { get; set; }
