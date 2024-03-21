@@ -76,7 +76,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _incrementCounter() {
     setState(() {
-      _account.messageHelper.SendMessageByUserID("c79d8c6f-7b38-4b1d-953c-05e585f697bd", "sosi hui");
+      //_account.messageHelper.SendMessageByUserID("c79d8c6f-7b38-4b1d-953c-05e585f697bd", "hello");
     });
   }
 
