@@ -16,6 +16,7 @@ class Account {
 
   Account.Login(String login, String password,
       void Function(List<MessageResponse>) onGetMessages,
+      void Function(List<Chat>) onGetChats,
       void Function(MessageResponse) onNewMessage) {
     var auth = http.post(
       Uri.parse('${URL}/api/auth/authorize'),
@@ -50,26 +51,24 @@ class Account {
 
       connection.on("ReceiveMyChats", (list) {
         var chatList = (list![0] as dynamic);
-        print(chatList);
-        print(chatList.length);
         chats.clear();
         try {
           for(int i = 0; i < (chatList.length as int); i++) {
             chats.add(Chat.fromDynamic(chatList[i]));
           }
+          onGetChats(chats);
         } catch(ex) {
           print(ex);
         }
       });
 
-      connection.on("ReceivedAllMessagesWithUser", (list) {
+      connection.on("ReceivedChatMessages", (list) {
         try {
           var chatList = (list![0] as dynamic);
           List<MessageResponse> messages = [];
           for(int i = 0; i < (chatList.length as int); i++) {
             messages.add(MessageResponse.fromDynamic(chatList[i]));
           }
-          print(messages);
           onGetMessages(messages);
         } catch(ex) {
           print(ex);
@@ -78,8 +77,6 @@ class Account {
 
       connection.on("ReceivedNewMessage", (list) {
         try {
-          print("RECEIVED");
-          print(list);
           onNewMessage(MessageResponse.fromDynamic(list![0]));
         } catch(ex) {
           print(ex);
@@ -88,7 +85,7 @@ class Account {
     });
   }
 
-  void GetMessages(User user) {
-    connection.send("get-all-messages-with-user", args: [user.id]);
+  void GetMessages(Chat chat) {
+    connection.send("get-chat-messages", args: [chat.id]);
   }
 }
