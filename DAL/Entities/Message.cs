@@ -16,8 +16,8 @@ namespace DAL.Entities
         public long? ReplyMessageId { get; set; }
         public long ChatId { get; set; }
         public virtual Chat? Chat { get; set; }
-        [ForeignKey("CreatedBy")] public required string CreatedById { get; set; }
+        [ForeignKey("CreatedBy")] public string? CreatedById { get; set; }
         public virtual AppUser? CreatedBy { get; set; }
-        public virtual required ICollection<MessageAttachment> Attachments { get; set; }
+        public virtual ICollection<MessageAttachment>? Attachments { get; set; }
     }
 }

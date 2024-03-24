@@ -1,4 +1,5 @@
-﻿using DAL.Interfaces;
+﻿using DAL.Enums;
+using DAL.Interfaces;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DAL.Entities
@@ -10,5 +11,6 @@ namespace DAL.Entities
         public virtual AppUser? User { get; set; }
         [ForeignKey("Chat")] public long ChatId { get; set; }
         public virtual Chat? Chat { get; set; }
+        public UserChatRoleType Role { get; set; }
     }
 }

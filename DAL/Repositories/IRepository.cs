@@ -17,6 +17,8 @@ public interface IRepository<T> where T : class
     T GetSingle(Expression<Func<T, bool>> predicate);
     Task<T> GetSingleAsync(Expression<Func<T, bool>> predicate);
     void Add(T entity);
+    Task AddAsync(T entity);
+    Task AddRangeAsync(List<T> entities);
     void Delete(T entity);
     void ExplicitDelete(T entity);
     void Edit(T entity);

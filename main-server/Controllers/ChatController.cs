@@ -13,12 +13,14 @@ namespace API.Controllers
     public class ChatController : ControllerBase
     {
         private readonly IChatService _chatService;
+        private readonly IMessageService _messageService;
         private readonly IHubContext<ChatHub> _chatHub;
 
-        public ChatController(IChatService chatService, IHubContext<ChatHub> chatHub)
+        public ChatController(IChatService chatService, IHubContext<ChatHub> chatHub, IMessageService messageService)
         {
             _chatService = chatService;
             _chatHub = chatHub;
+            _messageService = messageService;
         }
 
         [HttpPost("send-private-message")]
@@ -27,7 +29,7 @@ namespace API.Controllers
 
             data.SenderId = User?.Identity?.Name ?? throw new Exception("Forbidden");
 
-            var result = await _chatService.SavePrivateChatMessageAsync(data);
+            var result = await _messageService.SavePrivateChatMessageAsync(data);
 
             var chat = await _chatService.GetChatByIdAsync(result.ChatId, data.SenderId);
 
@@ -44,7 +46,7 @@ namespace API.Controllers
         {
             data.SenderId = User?.Identity?.Name ?? throw new Exception("Forbidden");
 
-            var result = await _chatService.SaveChatMessageAsync(data);
+            var result = await _messageService.SaveChatMessageAsync(data);
 
             var chat = await _chatService.GetChatByIdAsync(result.ChatId, data.SenderId);
 

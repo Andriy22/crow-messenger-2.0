@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using BLL.Common.Constants;
 using BLL.Common.Dtos.Chat;
+using BLL.Common.Helpers;
 using BLL.Services.Abstractions;
 using DAL.Entities;
 using DAL.Enums;
@@ -8,31 +9,31 @@ using DAL.Repositories;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Identity.Client;
 using System;
+using System.Net.Mail;
 
 namespace BLL.Services.Implementations
 {
     public class ChatService : IChatService
     {
-        private readonly IRepository<Message> _messageRepository;
         private readonly IRepository<Chat> _chatRepository;
-        private readonly IRepository<MessageAttachment> _messageAttachmentRepository;
+        private readonly IRepository<UserChat> _userChatRepository;
 
         private readonly IFileService _fileService;
         private readonly UserManager<AppUser> _userManager;
 
         private readonly IMapper _mapper;
 
-        public ChatService(IRepository<Message> messageRepository, 
-                                  IRepository<Chat> chatRepository, 
-                                  IRepository<MessageAttachment> messageAttachmentRepository,
-                                  IFileService fileService,
-                                  UserManager<AppUser> userManager,
-                                  IMapper mapper)
+        public ChatService(IRepository<Chat> chatRepository,
+                           IRepository<MessageAttachment> messageAttachmentRepository,
+                           IFileService fileService,
+                           UserManager<AppUser> userManager,
+                           IMapper mapper,
+                           IRepository<UserChat> userChatRepository)
         {
-            _messageRepository = messageRepository;
             _chatRepository = chatRepository;
-            _messageAttachmentRepository = messageAttachmentRepository;
+            _userChatRepository = userChatRepository;
 
             _fileService = fileService;
             _userManager = userManager;
@@ -40,15 +41,71 @@ namespace BLL.Services.Implementations
             _mapper = mapper;
         }
 
-        public async Task DeleteMessageAsync(long messageId, string userId)
+        public async Task<ChatResult> AddUsersToChatAsync(long chatId, List<string> accountIds, string userId)
         {
-            var message = await _messageRepository.GetQueryable(x => x.Id == messageId && x.CreatedById == userId)
+            var chat = await _chatRepository.GetQueryable(x => x.Id == chatId && !x.IsDeleted)
+               .Include(x => x.Users)
+               .Include(x => x.Chats)
+               .FirstOrDefaultAsync();
+
+            if (chat == null)
+            {
+                throw new Exception("Chat not found");
+            }
+
+            if (chat.Users.FirstOrDefault(x => x.UserId == userId)?.Role != UserChatRoleType.Owner)
+            {
+                throw new Exception("You don't have permissions to add users to this chat");
+            }
+
+            var accountsToAdd = accountIds.Where(x => !chat.Users.Any(u => u.UserId == x)).ToList();
+
+            await _userChatRepository.AddRangeAsync(accountsToAdd.Select(x => new UserChat { UserId = x, Role = UserChatRoleType.None }).ToList());
+
+            chat.Chats.Add(MessageHelper.CreateSystemMessage(SystemMessagesConstants.UserAdded));
+
+            chat.LastUpdatedAt = DateTime.UtcNow;
+
+            _chatRepository.Edit(chat);
+
+            return ChatConverter.ChatToResult(chat, userId);
+        }
+
+        public async Task<ChatResult> CreateChatAsync(string title, ChatType chatType, string userId)
+        {
+            var newChat = new Chat
+            {
+                Title = title,
+                Chats = new List<Message> { MessageHelper.CreateSystemMessage(SystemMessagesConstants.ChatCreated) },
+                ChatType = chatType,
+                CreatedAt = DateTime.Now,
+                LastUpdatedAt = DateTime.Now,
+                ImagePath = "",
+                Users = new List<UserChat> { new UserChat { UserId = userId, Role = UserChatRoleType.Owner } }
+            };
+
+            await _chatRepository.AddAsync(newChat);
+
+            return ChatConverter.ChatToResult(newChat, userId);
+        }
+
+        public async Task DeleteChatByIdAsync(long chatId, string userId)
+        {
+            var chat = await _chatRepository.GetQueryable(x => x.Id == chatId && !x.IsDeleted)
+                .Include(x => x.Users)
                 .FirstOrDefaultAsync();
 
-            if (message != null)
+            if (chat == null)
             {
-                _messageRepository.ExplicitDelete(message);
+                throw new Exception("Chat not found");
             }
+
+            if (chat.Users.FirstOrDefault(x => x.UserId == userId)?.Role != UserChatRoleType.Owner)
+            {
+                throw new Exception("You don't have permissions to delete this chat");
+            }
+            
+            _chatRepository.ExplicitDelete(chat);
         }
 
         public async Task<List<ChatResult>> GetAllChatsAsync(string userId)
@@ -56,9 +113,10 @@ namespace BLL.Services.Implementations
             var chats = await _chatRepository.GetQueryable(x => x.Users.Any(u => u.UserId == userId) && !x.IsDeleted)
                 .Include(x => x.Users)
                 .ThenInclude(x => x.User)
+                .Include(x => x.Chats.OrderByDescending(x => x.CreatedAt).Take(1))
                 .ToListAsync();
 
-            return chats.Select(x => ChatToResult(x, userId)).ToList();
+            return chats.Select(x => ChatConverter.ChatToResult(x, userId)).ToList();
         }
 
         public async Task<ChatResult> GetChatByIdAsync(long chatId, string userId)
@@ -66,6 +124,7 @@ namespace BLL.Services.Implementations
             var chat = await _chatRepository.GetQueryable(x => x.Id == chatId && !x.IsDeleted)
                 .Include(x => x.Users)
                 .ThenInclude(x => x.User)
+                .Include(x => x.Chats.OrderByDescending(x => x.CreatedAt).Take(1))
                 .FirstOrDefaultAsync();
 
             if (chat == null)
@@ -73,157 +132,78 @@ namespace BLL.Services.Implementations
                 throw new Exception("Chat not found");
             }
 
-            return ChatToResult(chat, userId);
+            return ChatConverter.ChatToResult(chat, userId);
         }
 
-        public async Task<List<MessageResult>> GetChatMessagesAsync(long chatId, string ownerId)
+        public async Task<ChatResult> LeaveChatAsync(long chatId, string userId)
         {
-            var chat = await _chatRepository.GetQueryable(x => x.Users.Any(x => x.UserId == ownerId) && x.Id == chatId)
-                .Include(x => x.Users)
-                .Include(x => x.Chats.Where(x => !x.IsDeleted))
-                .ThenInclude(x => x.CreatedBy)
-                .Include(x => x.Chats.Where(x => !x.IsDeleted))
-                .ThenInclude(x => x.Attachments)
-                .FirstOrDefaultAsync();
-
-            if (chat == null)
-            {
-                return new List<MessageResult>();
-            }
-
-            return chat.Chats.Select(x => MessageToResult(x, x.CreatedBy)).ToList();
-        }
-
-        public async Task<List<MessageResult>> GetMessagesWithUserAsync(string userId, string ownerId)
-        {
-            var users = new List<string>() { userId, ownerId };
-            var chat = await _chatRepository.GetQueryable(x => x.Users.All(u => users.Contains(u.UserId)) && !x.IsDeleted && x.ChatType == ChatType.Private)
-                .Include(x => x.Users)
-                .Include(x => x.Chats.Where(x => !x.IsDeleted))
-                .ThenInclude(x => x.CreatedBy)
-                .Include(x => x.Chats.Where(x => !x.IsDeleted))
-                .ThenInclude(x => x.Attachments)
-                .FirstOrDefaultAsync();
-
-            if (chat == null)
-            {
-                return new List<MessageResult>();
-            }
-
-            return chat.Chats.Select(x => MessageToResult(x, x.CreatedBy)).ToList();
-        }
-
-        public async Task<MessageResult> SaveChatMessageAsync(MessageDto message)
-        {
-            var chat = await _chatRepository.GetQueryable(x => x.Id == message.ChatId).FirstOrDefaultAsync();
+            var chat = await _chatRepository.GetQueryable(x => x.Id == chatId && !x.IsDeleted)
+                          .Include(x => x.Users)
+                          .Include(x => x.Chats)
+                          .FirstOrDefaultAsync();
 
             if (chat == null)
             {
                 throw new Exception("Chat not found");
             }
 
-            var dbMessage = _mapper.Map<Message>(message);
-
-            var files = await _fileService.SaveFilesAsync(message.Attachments ?? new List<IFormFile>(), FileConstants.UsersFiles);
-
-            dbMessage.CreatedAt = DateTime.UtcNow;
-            dbMessage.LastUpdatedAt = DateTime.UtcNow;
-
-            dbMessage.Attachments = files.Select(x => new MessageAttachment
+            if (chat.Users.FirstOrDefault(x => x.UserId == userId)?.Role != UserChatRoleType.Owner)
             {
-                AttachmentPath = x,
-                CreatedAt = DateTime.UtcNow,
-                LastUpdatedAt = DateTime.UtcNow,
-                CreatedById = message.SenderId!
-            }).ToList();
+                throw new Exception("You don't have permissions to add users to this chat");
+            }
 
-            var sender = await _userManager.FindByIdAsync(dbMessage.CreatedById);
+            var recordsToRemove = chat.Users.Where(u => u.UserId == userId && u.Role != UserChatRoleType.Owner);
 
-            _messageRepository.Add(dbMessage);
+            if (!recordsToRemove.Any())
+            {
+                throw new Exception("You can't leave your own chat");
+            }
 
-            return MessageToResult(dbMessage, sender);
+            foreach (var record in recordsToRemove)
+            {
+                _userChatRepository.Delete(record);
+            }
+
+            chat.Chats.Add(MessageHelper.CreateSystemMessage(SystemMessagesConstants.UserLeft));
+
+            chat.LastUpdatedAt = DateTime.UtcNow;
+
+            _chatRepository.Edit(chat);
+
+            return ChatConverter.ChatToResult(chat, userId);
         }
 
-        public async Task<MessageResult> SavePrivateChatMessageAsync(MessageDto message)
+        public async Task<ChatResult> RemoveUsersFromChatAsync(long chatId, List<string> accountIds, string userId)
         {
-            var users = new List<string>() { message.SenderId!, message.ReceiverId! };
-            var chat = await _chatRepository.GetQueryable(x => x.Users.All(u => users.Contains(u.UserId)) && !x.IsDeleted && x.ChatType == ChatType.Private)
-                .Include(x => x.Users)
-                .FirstOrDefaultAsync();
-
-            var dbMessage = _mapper.Map<Message>(message);
-
-            var files = await _fileService.SaveFilesAsync(message.Attachments ?? new List<IFormFile>(), FileConstants.UsersFiles);
-
-            dbMessage.CreatedAt = DateTime.UtcNow;
-            dbMessage.LastUpdatedAt = DateTime.UtcNow;
-
-            dbMessage.Attachments = files.Select(x => new MessageAttachment { AttachmentPath = x, 
-                CreatedAt = DateTime.UtcNow, 
-                LastUpdatedAt = DateTime.UtcNow, 
-                CreatedById = message.SenderId }).ToList();
-
-            var sender = await _userManager.FindByIdAsync(dbMessage.CreatedById);
+            var chat = await _chatRepository.GetQueryable(x => x.Id == chatId && !x.IsDeleted)
+                          .Include(x => x.Users)
+                          .Include(x => x.Chats)
+                          .FirstOrDefaultAsync();
 
             if (chat == null)
             {
-                chat = new Chat
-                {
-                    ImagePath = "",
-                    Chats = new List<Message> { dbMessage },
-                    Users = new List<UserChat> { new UserChat { UserId = message.ReceiverId! }, new UserChat { UserId = message.SenderId! } },
-                    ChatType = ChatType.Private,
-                    LastUpdatedAt = DateTime.UtcNow,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                _chatRepository.Add(chat);
-
-                return MessageToResult(dbMessage, sender);
+                throw new Exception("Chat not found");
             }
 
-            dbMessage.ChatId = chat.Id;
-
-            _messageRepository.Add(dbMessage);
-
-            return MessageToResult(dbMessage, sender);
-        }
-
-        private MessageResult MessageToResult(Message dbMessage, AppUser? sender)
-        {
-            return new MessageResult
+            if (chat.Users.FirstOrDefault(x => x.UserId == userId)?.Role != UserChatRoleType.Owner)
             {
-                Attachments = dbMessage.Attachments.Select(a => new MessageAttachmentResult { AttachemntPath = a.AttachmentPath, Id = a.Id }).ToList(),
-                Message = dbMessage.Text,
-                MessageType = dbMessage.MessageType,
-                Sender = new MessageUserResult
-                {
-                    Id = sender?.Id ?? "",
-                    NickName = sender?.NickName ?? "",
-                    ProfileImg = sender?.ProfileImg ?? ""
-                },
-                Id = dbMessage.Id,
-                CreatedAt = dbMessage.CreatedAt,
-                SeenAt = dbMessage.SeenAt,
-                ChatId = dbMessage.ChatId,
-            };
-        }
+                throw new Exception("You don't have permissions to add users to this chat");
+            }
 
-        private ChatResult ChatToResult(Chat chat, string userId)
-        {
-            return new ChatResult
+            var recordsToRemove = chat.Users.Where(u => accountIds.Contains(u.UserId) && u.Role != UserChatRoleType.Owner);
+
+            foreach (var record in recordsToRemove)
             {
-                Id = chat.Id,
-                ChatType = chat.ChatType,
-                Users = chat.Users.Select(u => new MessageUserResult
-                {
-                    Id = u.UserId,
-                    NickName = u?.User?.NickName ?? "",
-                    ProfileImg = u?.User?.ProfileImg ?? ""
-                }).ToList(),
-                ProfileImg = chat.ChatType != ChatType.Private ? chat.ImagePath : chat.Users.FirstOrDefault(x => x.UserId != userId)!.User!.ProfileImg!,
-                Title = chat.ChatType != ChatType.Private ? chat.Title : chat.Users.FirstOrDefault(x => x.UserId != userId)!.User!.NickName!,
-            };
+                _userChatRepository.Delete(record);
+            }
+
+            chat.Chats.Add(MessageHelper.CreateSystemMessage(SystemMessagesConstants.UserRemoved));
+
+            chat.LastUpdatedAt = DateTime.UtcNow;
+
+            _chatRepository.Edit(chat);
+
+            return ChatConverter.ChatToResult(chat, userId);
         }
     }
 }

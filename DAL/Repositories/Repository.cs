@@ -85,6 +85,18 @@ public class Repository<T> : IRepository<T> where T : class
         _dbContext.SaveChanges();
     }
 
+    public async Task AddAsync(T entity)
+    {
+        await _set.AddAsync(entity);
+        await _dbContext.SaveChangesAsync();
+    }
+
+    public async Task AddRangeAsync(List<T> entities)
+    {
+        await _set.AddRangeAsync(entities);
+        await _dbContext.SaveChangesAsync();
+    }
+
     public void Edit(T entity)
     {
         _dbContext.Entry(entity).State = EntityState.Modified;
