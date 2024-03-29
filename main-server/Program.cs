@@ -150,6 +150,7 @@ void RegisterServices(WebApplicationBuilder app)
     app.Services.AddScoped<IJWTService, JWTService>();
     app.Services.AddScoped<IAuthService, AuthService>();
     app.Services.AddScoped<IChatService, ChatService>();
+    app.Services.AddScoped<IMessageService, MessageService>();
     app.Services.AddScoped<IFileService, FileService>();
     app.Services.AddScoped<IUsersService, UsersService>();
 

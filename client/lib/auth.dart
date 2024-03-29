@@ -14,11 +14,13 @@ class Account {
 
   List<Chat> chats = [];
 
-  Account.Login(String login, String password,
-      void Function(List<MessageResponse>) onGetMessages,
-      void Function(List<Chat>) onGetChats,
-      void Function(MessageResponse) onNewMessage) {
-    var auth = http.post(
+  late void Function(List<MessageResponse>) onGetMessages;
+  late void Function()? onConnected;
+  late void Function(List<Chat>) onGetChats;
+  late void Function(MessageResponse) onNewMessage;
+
+  Account.Login(String login, String password, void Function(int statusCode) onFailed, void Function(Account account) onSucces) {
+    Future<http.Response>? auth = http.post(
       Uri.parse('${URL}/api/auth/authorize'),
       headers: <String, String>{
         'Content-Type': 'application/json; charset=UTF-8',
@@ -29,8 +31,12 @@ class Account {
       }),
     );
 
-    auth.then((value) {
-      print(value.body);
+    auth?.then((value) {
+      if(value.statusCode != 200) {
+        onFailed(value.statusCode);
+        return;
+      }
+
       user = User.fromJson(jsonDecode(value.body));
       messageHelper = MessageHelper(user);
       var options = HttpConnectionOptions(skipNegotiation: true,
@@ -46,7 +52,7 @@ class Account {
       connection.start();
 
       connection.on('Connected', (x) {
-        connection.send("get-my-chats");
+        onConnected!();
       });
 
       connection.on("ReceiveMyChats", (list) {
@@ -82,7 +88,35 @@ class Account {
           print(ex);
         }
       });
+
+      onSucces(this);
     });
+  }
+
+  static Future<Account?> Register(String login, String password, void Function(int statusCode) onFailed, void Function(Account account) onSucces) async {
+    http.Response auth = await http.post(
+      Uri.parse('${URL}/api/accounts/create-account'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(<String, String> {
+        "nickName": login,
+        "password": password
+      }),
+    );
+
+    print(auth.body);
+
+    if(auth.statusCode == 200) {
+      return Account.Login(login, password, onFailed, onSucces);
+    }
+
+    onFailed(auth.statusCode);
+    return null;
+  }
+
+  void GetChats() {
+    connection.send("get-my-chats");
   }
 
   void GetMessages(Chat chat) {
