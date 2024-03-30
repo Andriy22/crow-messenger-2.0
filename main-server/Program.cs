@@ -1,7 +1,9 @@
 using API.Common.Accounts.Validators;
 using API.Hubs;
+using API.Middlewares;
 using API.Providers;
 using BLL.Common.Constants;
+using BLL.Common.Errors;
 using BLL.Common.Mapper;
 using BLL.Common.Validators;
 using BLL.Services.Abstractions;
@@ -10,10 +12,13 @@ using DAL;
 using DAL.Entities;
 using DAL.Repositories;
 using FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.OpenApi.Models;
+using System.Text.Json;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,7 +32,16 @@ app.Run();
 
 void RegisterServices(WebApplicationBuilder app)
 {
-    app.Services.AddMvc().AddNewtonsoftJson();
+    app.Services.AddControllers().ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var errors = context.ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => JsonSerializer.Deserialize<ErrorModel>(e.ErrorMessage));
+            return new BadRequestObjectResult(errors);
+        };
+    }).AddNewtonsoftJson();
     app.Services.AddEndpointsApiExplorer();
     app.Services.AddSwaggerGen(option =>
     {
@@ -141,10 +155,11 @@ void RegisterServices(WebApplicationBuilder app)
               };
           });
 
+    app.Services.AddTransient<IValidatorInterceptor, UseCustomErrorModelInterceptor>();
     app.Services.AddTransient<IUserValidator<AppUser>, OptionalEmailUserValidator<AppUser>>();
 
     app.Services.AddScoped<IUserRepository, UserRepository>();
-    builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+    app.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 
     app.Services.AddScoped<IAccountsService, AccountsService>();
     app.Services.AddScoped<IJWTService, JWTService>();
@@ -168,6 +183,8 @@ void Configure(WebApplication app)
         var db = scope.ServiceProvider.GetRequiredService<DefaultDbContext>();
         db.Database.EnsureCreated();
     }
+
+    app.UseCustomExceptionHandler();
 
     app.UseHttpsRedirection();
 
