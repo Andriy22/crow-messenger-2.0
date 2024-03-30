@@ -90,7 +90,7 @@ namespace BLL.Services.Implementations
 
         public async Task<MessageResult> SaveChatMessageAsync(MessageDto message)
         {
-            var chat = await _chatRepository.GetQueryable(x => x.Id == message.ChatId).FirstOrDefaultAsync();
+            var chat = await _chatRepository.GetQueryable(x => x.Id == message.ChatId).Include(x => x.Users).FirstOrDefaultAsync();
 
             if (chat == null)
             {
