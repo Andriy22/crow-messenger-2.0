@@ -122,4 +122,8 @@ class Account {
   void GetMessages(Chat chat) {
     connection.send("get-chat-messages", args: [chat.id]);
   }
+
+  void GetChatByUser(User user) {
+
+  }
 }
