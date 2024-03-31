@@ -168,6 +168,7 @@ void RegisterServices(WebApplicationBuilder app)
     app.Services.AddScoped<IMessageService, MessageService>();
     app.Services.AddScoped<IFileService, FileService>();
     app.Services.AddScoped<IUsersService, UsersService>();
+    app.Services.AddScoped<IProfileService, ProfileService>();
 
     app.Services.AddHttpContextAccessor();
 }
