@@ -126,6 +126,7 @@ class _MessagesViewState extends State<MessagesView> {
         onPressed: () {
           setState(() {
             Navigator.of(context).pop();
+            widget.account.GetChats();
           });
         },
       ),
@@ -146,7 +147,7 @@ class _MessagesViewState extends State<MessagesView> {
               flex: 10,
               child: Column(
                 children: [
-                  Padding(padding: const EdgeInsets.fromLTRB(10, 0, 10, 0), child: Text(widget.currentChat.users[0].nickName)),
+                  Padding(padding: const EdgeInsets.fromLTRB(10, 0, 10, 0), child: Text(widget.currentChat.title)),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

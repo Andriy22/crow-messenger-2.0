@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 
 import 'consts.dart';
@@ -19,12 +21,14 @@ class User {
 class Chat {
   int id;
   int chatType;
+  String title;
   String? profileImage;
   List<User> users;
 
-  Chat(this.id, this.chatType, this.profileImage, this.users);
+  Chat(this.id, this.chatType, this.title, this.profileImage, this.users);
 
   Chat.fromDynamic(dynamic map) : this.id = map["id"],
+        this.title = map["title"],
         this.chatType = map["chatType"],
         this.profileImage = map["profileImg"],
         this.users =  (map["users"] as List).map((x) => User(x["id"], x["nickName"], x["profileImg"], null)).toList();
@@ -75,7 +79,7 @@ class MessageHelper {
 
   MessageHelper(this.user);
 
-  SendMessageByChatID(int chatId, String message) {
+  SendMessageByChatID(int chatId, String message, {void Function(MessageResponse)? onResponse = null}) {
     var auth = http.post(
       Uri.parse('${URL}/api/chat/send-message-to-chat'),
       headers: <String, String>{
@@ -86,10 +90,13 @@ class MessageHelper {
         "messageType": 0.toString(),
         "chatId": chatId.toString(),
       },
-    ).then((value) => print(value.body)).catchError((x) => print(x));
+    ).then((value) {
+      print("SUKA " + MessageResponse.fromDynamic(jsonDecode(value.body)).id.toString());
+      onResponse!(MessageResponse.fromDynamic(jsonDecode(value.body)));
+    }).catchError((x) => print(x));
   }
 
-  SendMessageByUserID(String receiverId, String message) {
+  SendMessageByUserID(String receiverId, String message, {void Function(MessageResponse)? onResponse = null}) {
     var auth = http.post(
       Uri.parse('${URL}/api/chat/send-private-message'),
       headers: <String, String>{
@@ -100,6 +107,9 @@ class MessageHelper {
         "messageType": 0.toString(),
         "receiverId": receiverId,
       },
-    ).then((value) => print(value.body)).catchError((x) => print(x));
+    ).then((value) {
+      print("SUKA " + MessageResponse.fromDynamic(jsonDecode(value.body)).toString());
+      onResponse!(MessageResponse.fromDynamic(jsonDecode(value.body)));
+    }).catchError((x) => print(x));
   }
 }

@@ -1,9 +1,14 @@
+import 'dart:convert';
+
 import 'package:client/auth.dart';
 import 'package:client/data.dart';
 import 'package:client/messagesView.dart';
 import 'package:flutter/material.dart';
 
 import 'authorizedView.dart';
+import 'package:http/http.dart' as http;
+
+import 'consts.dart';
 
 class ChatView extends AuthorizedView {
   ChatView(Account account) : super(account);
@@ -34,17 +39,84 @@ class _ChatViewState extends State<ChatView> {
   }
 
   void _incrementCounter() {
-    setState(() {
-      //_account.messageHelper.SendMessageByUserID("c79d8c6f-7b38-4b1d-953c-05e585f697bd", "hello");
+    var users = List<User>.empty();
+
+    List<Widget> GetChats() {
+      var userWidgets = List<Widget>.empty(growable: true);
+      for(int i = 0; i < users.length; i++) {
+        if(users[i].id == widget.account.user.id) {
+          continue;
+        }
+
+        userWidgets.add(Padding(
+            padding: const EdgeInsets.all(10),
+            child: InkWell(
+                splashColor: Colors.blue.withAlpha(30),
+                onTap: () {
+                  var chat = widget.account.chats.where((x) => x.users.any((j) => j.id == users[i].id)).firstOrNull;
+                  if(chat != null) {
+                    Navigator.pop(context);
+                    OpenChat(chat);
+                    return;
+                  }
+
+                  ShowNewMessageDialog(users[i]);
+                },
+                child: Row(children: [
+                  Text(users[i].nickName as String)
+        ],))));
+      }
+
+      return userWidgets;
+    }
+
+    var textFieldController = TextEditingController();
+    void Function(void Function()) setDialogStateFunction = (void Function()) => {};
+    textFieldController.addListener(() {
+      var auth = http.get(
+        Uri.parse('${URL}/api/users/get-users-by-nickname?nickname=${textFieldController.text}'),
+        headers: <String, String>{
+          'Authorization': "bearer ${widget.account.user.accessToken}",
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+
+      );
+
+      auth.then((value) {
+        print(users);
+        setDialogStateFunction(() {
+          users = (jsonDecode(value.body) as List).map((x) => User.fromJson(x)).toList();
+        });
+      });
     });
+
+    showDialog<String>(
+        context: context,
+        builder: (context) {
+          return StatefulBuilder(builder: (context, setDialogState) {
+            setDialogStateFunction = setDialogState;
+            return Dialog(
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  children: [
+                    Padding(padding: EdgeInsets.fromLTRB(5, 10, 5, 20),
+                      child: TextField(
+                        decoration: InputDecoration(prefixIcon: Icon(Icons.search), labelText: "Username", border: OutlineInputBorder(borderRadius: BorderRadius.circular(20))),
+                        controller: textFieldController),),
+
+                    SingleChildScrollView(child: Column( children: GetChats(),),)
+                  ],
+                ),
+              ),
+            );
+          });
+        }
+    );
+
   }
 
-  void _incrementMessages(Chat chat) {
-    // setState(() {
-    //   currentChat = chat;
-    //   _account.GetMessages(chat);
-    // });
-
+  void OpenChat(Chat chat) {
     Navigator.of(context).push(MaterialPageRoute(builder: (context) => MessagesView(widget.account, chat)));
   }
 
@@ -54,7 +126,7 @@ class _ChatViewState extends State<ChatView> {
       widgets.add(InkWell(
           splashColor: Colors.blue.withAlpha(30),
           onTap: () {
-            _incrementMessages(widget.account.chats[i]);
+            OpenChat(widget.account.chats[i]);
           },
           child: Row(children: [
             Padding(
@@ -192,6 +264,50 @@ class _ChatViewState extends State<ChatView> {
         tooltip: 'Increment',
         child: const Icon(Icons.add),
       )
+    );
+  }
+
+  void ShowNewMessageDialog(User user) {
+    var textFieldController = TextEditingController();
+    textFieldController.text = "Greatings!";
+
+    showDialog<String>(
+        context: context,
+        builder: (context) {
+          return StatefulBuilder(builder: (context, setDialogState) {
+            return Dialog(
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  children: [
+                    Padding(padding: EdgeInsets.fromLTRB(5, 10, 5, 20),
+                      child: Text(user.nickName)),
+
+                    TextField(
+                        decoration: InputDecoration(
+                            labelText: "Message",
+                            suffixIcon: InkWell(
+                              onTap: () {
+                                widget.account.messageHelper.SendMessageByUserID(
+                                    user.id,
+                                    textFieldController.text,
+                                    onResponse: (response) {
+                                      OpenChat(Chat(response.chatId, 0, user.nickName, user.profileImage, [widget.account.user, user] ));
+                                    });
+                                Navigator.pop(context);
+
+                                //OpenChat()
+                              },
+                              child: Icon(Icons.send),
+                            ),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(20))),
+                        controller: textFieldController)
+                  ],
+                ),
+              ),
+            );
+          });
+        }
     );
   }
 }
