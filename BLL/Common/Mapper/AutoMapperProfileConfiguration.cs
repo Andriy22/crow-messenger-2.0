@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using BLL.Common.Dtos.Chat;
+using BLL.Common.Dtos.Profile;
 using DAL.Entities;
 
 namespace BLL.Common.Mapper
@@ -18,6 +19,8 @@ namespace BLL.Common.Mapper
                 .ForMember(x => x.Id, opt => opt.MapFrom(x => x.Id))
                 .ForMember(x => x.NickName, opt => opt.MapFrom(x => x.NickName))
                 .ForMember(x => x.ProfileImg, opt => opt.MapFrom(x => x.ProfileImg));
+
+            CreateMap<AppUser, AppUserResult>();
         }
     }
 }

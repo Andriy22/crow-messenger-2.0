@@ -22,4 +22,5 @@ public interface IRepository<T> where T : class
     void Delete(T entity);
     void ExplicitDelete(T entity);
     void Edit(T entity);
+    Task EditAsync(T entity);
 }

@@ -44,9 +44,6 @@ namespace BLL.Services.Implementations
             return new AuthorizationResult
             {
                 AccessToken = access_token,
-                Id = user.Id,
-                NickName = model.NickName,
-                ProfileImg = user.ProfileImg,
                 TokenType = "bearer"
             };
         }

@@ -1,12 +1,11 @@
-﻿using Microsoft.AspNetCore.Identity;
-
-namespace DAL.Entities
+﻿namespace BLL.Common.Dtos.Profile
 {
-    public class AppUser : IdentityUser
+    public class AppUserResult
     {
+        public required string Id { get; set; }
         public required string NickName { get; set; }
         public required string ProfileImg { get; set; }
+        public string? Bio { get; set; }
         public string? Status { get; set; }
-        public string? BIO { get; set; }
     }
 }

@@ -6,7 +6,7 @@ namespace BLL.Services.Implementations
 {
     public class FileService : IFileService
     {
-        public async Task RemoveFileAsync(string fileName, string directory)
+        public void RemoveFile(string fileName, string directory)
         {
             var filePath = Path.Combine(directory, fileName);
 
@@ -16,7 +16,7 @@ namespace BLL.Services.Implementations
             }
         }
 
-        public async Task RemoveFilesAsync(List<string> files, string directory)
+        public void RemoveFiles(List<string> files, string directory)
         {
             foreach (var file in files)
             {

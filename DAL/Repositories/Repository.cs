@@ -22,22 +22,22 @@ public class Repository<T> : IRepository<T> where T : class
 
     public virtual async Task<T> GetByIdAsync(string id)
     {
-        return await _set.FindAsync(id);
+        return (await _set.FindAsync(id))!;
     }
 
     public virtual T GetById(string id)
     {
-        return _set.Find(id);
+        return _set.Find(id)!;
     }
 
     public virtual async Task<T> GetByIdAsync(int id)
     {
-        return await _set.FindAsync(id);
+        return (await _set.FindAsync(id))!;
     }
 
     public virtual T GetById(int id)
     {
-        return _set.Find(id);
+        return _set.Find(id)!;
     }
 
     public virtual IEnumerable<T> Get()
@@ -67,16 +67,16 @@ public class Repository<T> : IRepository<T> where T : class
 
     public async Task<T> GetSingleAsync(Expression<Func<T, bool>> predicate)
     {
-        return await _set
+        return (await _set
             .Where(predicate)
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync())!;
     }
 
     public virtual T GetSingle(Expression<Func<T, bool>> predicate)
     {
-        return _set
+        return (_set
             .Where(predicate)
-            .FirstOrDefault();
+            .FirstOrDefault())!;
     }
 
     public void Add(T entity)
@@ -101,6 +101,12 @@ public class Repository<T> : IRepository<T> where T : class
     {
         _dbContext.Entry(entity).State = EntityState.Modified;
         _dbContext.SaveChanges();
+    }
+
+    public async Task EditAsync(T entity)
+    {
+        _dbContext.Entry(entity).State = EntityState.Modified;
+        await _dbContext.SaveChangesAsync();
     }
 
     public virtual void Delete(T entity)
