@@ -46,10 +46,11 @@ namespace API.Middlewares
 
             if (!errors.Any())
             {
-                return context.Response.WriteAsync(JsonSerializer.Serialize(new { error = exception.Message, trace = exception.StackTrace, requestId = Activity.Current.Id }));
+                return context.Response.WriteAsync(JsonSerializer.Serialize(new { error = exception.Message, trace = exception.StackTrace, requestId = Activity.Current!.Id! }));
             }
 
             return context.Response.WriteAsync(JsonSerializer.Serialize(errors));
         }
     }
 }
+
