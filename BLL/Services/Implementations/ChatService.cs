@@ -114,6 +114,7 @@ namespace BLL.Services.Implementations
                 .Include(x => x.Users)
                 .ThenInclude(x => x.User)
                 .Include(x => x.Chats.OrderByDescending(x => x.CreatedAt).Take(1))
+                .ThenInclude(x => x.CreatedBy)
                 .ToListAsync();
 
             return chats.Select(x => ChatConverter.ChatToResult(x, userId)).ToList();

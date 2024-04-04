@@ -33,39 +33,33 @@ class _LoginViewState extends State<LoginView> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               CardButton("SIGN IN", Colors.blue, () {
-                Account.Login(_loginTextController.text, _passwordTextController.text, (ex) {
-                  String description = "Error code: ${ex}";
-                  if(ex == 400) {
-                    description = "The is no user with this login.";
-                  }
+                try{
+                  Account.Login(_loginTextController.text, _passwordTextController.text, (account) {
+                    Navigator.of(context).push(MaterialPageRoute(builder: (context) => ChatView(account)));
 
-                  if(ex == 500) {
-                    description = "The password is wrong.";
-                  }
-
+                  });
+                } catch(ex) {
+                  String description = (ex as Exception).toString();
+                  print(ex);
                   showDialog<String>(
                       context: context,
                       builder: (context) => AlertDialog(
                         title: const Text("Failed to login!"),
                         content: Text(description),
-                        actions: [ TextButton(onPressed: () => Navigator.pop(context, 'Cancel'), child: const Text("Cancel")) ],
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(context, 'Cancel'),
+                              child: const Text("Cancel")) ],
                       )
                   );
-
-                }, (account) {
-                  Navigator.of(context).push(MaterialPageRoute(builder: (context) => ChatView(account)));
-                });
+                }
               }),
               CardButton("SIGN UP", Colors.white70, () {
-                Account.Register(_loginTextController.text, _passwordTextController.text, (ex) {
-                  String description = "Error code: ${ex}";
-                  if(ex == 400) {
-                    description = "Password is too weak.";
-                  }
-
-                  if(ex == 500) {
-                    description = "User already exists.";
-                  }
+                try {
+                  Account.Register(_loginTextController.text, _passwordTextController.text, (account) {
+                    Navigator.of(context).push(MaterialPageRoute(builder: (context) => ChatView(account)));
+                  });
+                } catch(ex) {
+                  String description = ex.toString();
 
                   showDialog<String>(
                       context: context,
@@ -75,10 +69,8 @@ class _LoginViewState extends State<LoginView> {
                         actions: [ TextButton(onPressed: () => Navigator.pop(context, 'Cancel'), child: const Text("Cancel")) ],
                       )
                   );
+                }
 
-                }, (account) {
-                  Navigator.of(context).push(MaterialPageRoute(builder: (context) => ChatView(account)));
-                });
               })
             ],
           ))

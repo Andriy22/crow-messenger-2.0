@@ -8,6 +8,11 @@ namespace BLL.Common.Helpers
     {
         public static ChatResult ChatToResult(Chat chat, string userId)
         {
+            Message? message = chat.Chats.FirstOrDefault();
+            var lastMessage = message != null 
+                ? MessageConverter.MessageToResult(message, message.CreatedBy)
+                : null;
+
             return new ChatResult
             {
                 Id = chat.Id,
@@ -23,6 +28,7 @@ namespace BLL.Common.Helpers
                 }).ToList(),
                 ProfileImg = chat.ChatType != ChatType.Private ? chat.ImagePath : chat.Users.FirstOrDefault(x => x.UserId != userId)!.User!.ProfileImg!,
                 Title = chat.ChatType != ChatType.Private ? chat.Title : chat.Users.FirstOrDefault(x => x.UserId != userId)!.User!.NickName!,
+                LastMessage = lastMessage
             };
         }
     }

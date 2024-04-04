@@ -9,5 +9,6 @@ namespace BLL.Common.Dtos.Chat
         public string? Title { get; set; }
         public required string ProfileImg { get; set; }
         public required List<MessageUserResult> Users { get; set; }
+        public MessageResult? LastMessage { get; set; }
     }
 }

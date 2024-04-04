@@ -3,6 +3,8 @@ import 'package:client/authorizedView.dart';
 import 'package:client/data.dart';
 import 'package:flutter/material.dart';
 
+import 'consts.dart';
+
 class MessagesView extends AuthorizedView {
   MessagesView(Account account, this.currentChat) : super(account);
 
@@ -130,35 +132,73 @@ class _MessagesViewState extends State<MessagesView> {
           });
         },
       ),
-      title: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        //crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-              borderRadius: BorderRadius.circular(25),
-              child: Image(
-                  image: widget.currentChat.profileImage!.isEmpty
-                      ? NetworkImage("https://img2.joyreactor.cc/pics/post/TheFikus-artist-Pixel-Art-8365649.png")
-                      : NetworkImage(widget.currentChat.profileImage!),
-                  width: 50,
-                  height: 50,
-                  fit: BoxFit.cover)),
-          Expanded(
-              flex: 10,
-              child: Column(
-                children: [
-                  Padding(padding: const EdgeInsets.fromLTRB(10, 0, 10, 0), child: Text(widget.currentChat.title)),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+      title: InkWell(
+        onTap: () {
+          showDialog(context: context, builder: (context) {
+            return StatefulBuilder(builder: (context, setDialogState) {
+              return Dialog(
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.phone_android, size: 14),
-                      Text(" online",
-                          style: Theme.of(context).textTheme.labelLarge)
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundImage: NetworkImage(widget.currentChat.profileImage!.isEmpty
+                                ? "https://img2.joyreactor.cc/pics/post/TheFikus-artist-Pixel-Art-8365648.png"
+                                : "${URL}/static/users/${widget.currentChat.profileImage}")),
+
+                          Padding(padding: EdgeInsets.fromLTRB(10, 10, 10, 10),
+                            child: Text(widget.currentChat.title, textScaler: TextScaler.linear(1.5),),),
+
+                        ],
+                      ),
+
+                      Padding(padding: EdgeInsets.fromLTRB(10, 10, 10, 0),
+                        child: Text(
+                            "Bio: ${widget.currentChat.users.where((element) => element.id != widget.account.user.id).first.bio}",
+                            maxLines: 3,
+                            textAlign: TextAlign.start,)
+                      ),
                     ],
-                  )
-                ],
-              )),
-        ],
+                  ),
+                ),
+              );
+            });
+          });
+        },
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          //crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+                borderRadius: BorderRadius.circular(25),
+                child: Image(
+                    image: widget.currentChat.profileImage!.isEmpty
+                        ? NetworkImage("https://img2.joyreactor.cc/pics/post/TheFikus-artist-Pixel-Art-8365649.png")
+                        : NetworkImage("${URL}/static/users/${widget.currentChat.profileImage!}"),
+                    width: 50,
+                    height: 50,
+                    fit: BoxFit.cover)),
+            Expanded(
+                flex: 10,
+                child: Column(
+                  children: [
+                    Padding(padding: const EdgeInsets.fromLTRB(10, 0, 10, 0), child: Text(widget.currentChat.title)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.phone_android, size: 14),
+                        Text(" online",
+                            style: Theme.of(context).textTheme.labelLarge)
+                      ],
+                    )
+                  ],
+                )),
+          ],
+        ),
       ),
       actions: [
         IconButton(
@@ -181,8 +221,7 @@ class _MessagesViewState extends State<MessagesView> {
         IconButton(
             onPressed: () {
               setState(() {
-                if(_controller.text.isEmpty)
-                {
+                if(_controller.text.isEmpty) {
                   return;
                 }
                 widget.account.messageHelper.SendMessageByChatID(widget.currentChat.id, _controller.text);

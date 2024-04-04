@@ -29,14 +29,14 @@ namespace BLL.Services.Implementations
 
             if (user == null)
             {
-                throw new HttpRequestException("User not found", null, HttpStatusCode.NotFound);
+                throw new HttpRequestException("User not found", null, HttpStatusCode.BadRequest);
             }
 
             var isLoggined = await _userManager.CheckPasswordAsync(user, model.Password);
 
             if (!isLoggined)
             {
-                throw new HttpRequestException("Password is wrong", null, HttpStatusCode.NotFound);
+                throw new HttpRequestException("Password is wrong", null, HttpStatusCode.BadRequest);
             }
 
             var access_token = _jWTService.CreateToken(user);

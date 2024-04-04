@@ -7,15 +7,19 @@ import 'consts.dart';
 class User {
   String id;
   String nickName;
-  String? profileImage;
+  String status;
+  String bio;
+  String profileImage;
   String? accessToken;
 
-  User(this.id, this.nickName, this.profileImage, this.accessToken);
+  User(this.id, this.nickName, this.profileImage, {this.status = "", this.bio = "", this.accessToken});
 
-  User.fromJson(Map<String, dynamic> map) : this.id = map["id"]!,
-      this.nickName = map["nickName"]!,
-      this.profileImage = map["profileImg"],
-      this.accessToken = map["accessToken"];
+  User.fromJson(Map<String, dynamic> map) : id = map["id"],
+        nickName = map["nickName"],
+        bio = map["bio"] ?? "",
+        status = map["status"] ?? "",
+        profileImage = map["profileImg"] ?? "",
+        accessToken = map["accessToken"] ?? "";
 }
 
 class Chat {
@@ -27,11 +31,11 @@ class Chat {
 
   Chat(this.id, this.chatType, this.title, this.profileImage, this.users);
 
-  Chat.fromDynamic(dynamic map) : this.id = map["id"],
-        this.title = map["title"],
-        this.chatType = map["chatType"],
-        this.profileImage = map["profileImg"],
-        this.users =  (map["users"] as List).map((x) => User(x["id"], x["nickName"], x["profileImg"], null)).toList();
+  Chat.fromDynamic(dynamic map) : id = map["id"],
+        title = map["title"],
+        chatType = map["chatType"],
+        profileImage = map["profileImg"],
+        users =  (map["users"] as List).map((x) => User.fromJson(x)).toList();
 }
 
 class MessageRequest {
@@ -64,14 +68,14 @@ class MessageResponse  {
 
   MessageResponse(this.id, this.message, this.messageType, this.chatId, this.createdAt, this.sender, this.replyMessageId, this.seenAt);
 
-  MessageResponse.fromDynamic(dynamic map) : this.id = map["id"],
-    this.message = map["message"],
-    this.messageType = map["messageType"],
-    this.sender = User(map["sender"]["id"], map["sender"]["nickName"], map["sender"]["profileImg"], null),
-    this.createdAt = DateTime.parse(map["createdAt"]),
-    this.chatId = map["chatId"],
-    this.replyMessageId = map["replyMessageId"],
-    this.seenAt = map["seenAt"];
+  MessageResponse.fromDynamic(dynamic map) : id = map["id"],
+    message = map["message"],
+    messageType = map["messageType"],
+    sender = User.fromJson(map["sender"]),
+    createdAt = DateTime.parse(map["createdAt"]),
+    chatId = map["chatId"],
+    replyMessageId = map["replyMessageId"],
+    seenAt = map["seenAt"];
 }
 
 class MessageHelper {

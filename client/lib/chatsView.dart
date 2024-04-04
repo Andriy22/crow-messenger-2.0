@@ -1,12 +1,21 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:ui';
 
 import 'package:client/auth.dart';
+import 'package:client/components.dart';
 import 'package:client/data.dart';
+import 'package:client/imageCropingView.dart';
+import 'package:client/loginView.dart';
 import 'package:client/messagesView.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'authorizedView.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/src/media_type.dart';
 
 import 'consts.dart';
 
@@ -102,7 +111,9 @@ class _ChatViewState extends State<ChatView> {
                   children: [
                     Padding(padding: EdgeInsets.fromLTRB(5, 10, 5, 20),
                       child: TextField(
-                        decoration: InputDecoration(prefixIcon: Icon(Icons.search), labelText: "Username", border: OutlineInputBorder(borderRadius: BorderRadius.circular(20))),
+                        decoration: InputDecoration(prefixIcon: Icon(Icons.search),
+                          labelText: "Username",
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(20))),
                         controller: textFieldController),),
 
                     SingleChildScrollView(child: Column( children: GetChats(),),)
@@ -136,7 +147,7 @@ class _ChatViewState extends State<ChatView> {
                     child: Image(
                         image: widget.account.chats[i].profileImage!.isEmpty
                             ? NetworkImage("https://img2.joyreactor.cc/pics/post/TheFikus-artist-Pixel-Art-8365649.png")
-                            : NetworkImage(widget.account.chats[i].profileImage!),
+                            : NetworkImage("${URL}/static/users/${widget.account.chats[i].profileImage!}"),
                         width: 50,
                         height: 50,
                         fit: BoxFit.cover))),
@@ -148,7 +159,7 @@ class _ChatViewState extends State<ChatView> {
                       mainAxisAlignment: MainAxisAlignment.start,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(widget.account.chats[i].users[0].nickName,
+                        Text(widget.account.chats[i].title,
                             style:
                             Theme.of(context).textTheme.labelLarge),
                         Text(
@@ -230,7 +241,7 @@ class _ChatViewState extends State<ChatView> {
 
   AppBar drawAppBar() {
     return AppBar(
-      automaticallyImplyLeading: false,
+      automaticallyImplyLeading: true,
       leading: null,
       backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       title: const Text("Messenger"),
@@ -242,6 +253,185 @@ class _ChatViewState extends State<ChatView> {
       _scrollController.position.maxScrollExtent,
       duration: Duration(milliseconds: milliseconds),
       curve: Curves.fastOutSlowIn,
+    );
+  }
+
+  Widget createUserAvatar() {
+    return InkWell(
+      onTap: () async {
+        FilePickerResult? result = await FilePicker.platform.pickFiles();
+
+        if (result == null) {
+          return;
+        }
+
+        File file = File(result.files.first.path!);
+
+        Navigator.of(context).push(MaterialPageRoute(builder: (context) {
+          return ImageCropingView(Image.file(file), (croppedControler) async {
+            print(file.path);
+            var request = http.MultipartRequest("POST", Uri.parse("${URL}/api/profile/change-image"));
+            request.headers.addAll(<String, String>{
+              'Authorization': "bearer ${widget.account.user.accessToken}",
+            });
+
+            var bitmap = await croppedControler.croppedBitmap();
+            var iamge = await croppedControler.croppedImage();
+            var byteData = await bitmap.toByteData(format: ImageByteFormat.png);
+
+            request.files.add(await http.MultipartFile.fromBytes("file",
+                byteData!.buffer.asUint8List(),
+                filename: 'uploaded_file.png',
+                contentType: MediaType('image', 'png'),));
+
+            var responseStream = await request.send();
+            var response = await http.Response.fromStream(responseStream);
+            setState(() {
+              print(response.body);
+              widget.account.user.profileImage = response.body;
+            });
+          });
+        }));
+      },
+      child: CircleAvatar(
+        backgroundImage: NetworkImage(
+            widget.account.user.profileImage.isEmpty
+                ? "https://img2.joyreactor.cc/pics/post/TheFikus-artist-Pixel-Art-8365648.png"
+                : "${URL}/static/users/${widget.account.user.profileImage}"),
+      ),
+    );
+  }
+
+  Drawer createDrawer() {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          UserAccountsDrawerHeader(
+              accountName: Text(widget.account.user.nickName,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                  )),
+              accountEmail: InkWell(
+                onTap: () {
+                  showDialog(context: context, builder: (context) {
+                    var textController = TextEditingController();
+                    textController.text = widget.account.user.status;
+                    return Dialog(
+                        child: Padding(padding: const EdgeInsets.all(10),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Padding(padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
+                                  child: TextField(
+                                    decoration: InputDecoration(labelText: "Status",
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+                                        suffixIcon: InkWell(child: Icon(Icons.save_outlined),
+                                          onTap: () {
+                                            setState(() {
+                                              widget.account.UpdateStatus(textController.text);
+                                            });
+                                          },)),
+                                    controller: textController,
+                                    minLines: 1,
+                                    maxLines: 1,
+                                    maxLength: 50,
+                                    maxLengthEnforcement: MaxLengthEnforcement.truncateAfterCompositionEnds,),),
+                              ],
+                            )
+                        )
+                    );
+                  });
+                },
+                child: Row(children: [
+                  Text(widget.account.user.status.isEmpty
+                      ? "online"
+                      : widget.account.user.status),
+
+                  const Padding(padding: EdgeInsets.fromLTRB(5, 0, 0, 0), child: Icon(Icons.edit, color: Colors.white,),)
+                ],),
+              ),
+              currentAccountPicture: createUserAvatar(),
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: NetworkImage(
+                    "https://img2.joyreactor.cc/pics/post/PainterKira-Pixel-Gif-Pixel-Art-8320631.gif",
+                  ),
+                  fit: BoxFit.cover,
+                ),
+              )),
+
+          ListTile(
+            leading: const Icon(Icons.person_outline),
+            title: const Text("Profile"),
+            onTap: () {
+              showDialog(context: context, builder: (context) {
+                var textController = TextEditingController();
+                textController.text = widget.account.user.bio;
+                return StatefulBuilder(builder: (context, setDialogState) {
+                  return Dialog(
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              createUserAvatar(),
+                              Padding(padding: EdgeInsets.fromLTRB(10, 10, 10, 10),
+                                child: Text(widget.account.user.nickName, textScaler: TextScaler.linear(1.5),),),
+
+                            ],
+                          ),
+
+                          Padding(padding: EdgeInsets.fromLTRB(0, 10, 0, 0),
+                            child: TextField(
+                                decoration: InputDecoration(labelText: "Bio",
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(20))),
+                                controller: textController,
+                                minLines: 3,
+                                maxLines: 3,
+                                maxLength: 200,
+                                maxLengthEnforcement: MaxLengthEnforcement.truncateAfterCompositionEnds,),),
+
+                          Padding(padding: EdgeInsets.fromLTRB(0, 10, 0, 0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                CardButton("Save", Colors.blue, () {
+                                  widget.account.UpdateBio(textController.text);
+                                }, icon: Icon(Icons.save_outlined))
+                              ],),)
+                        ],
+                      ),
+                    ),
+                  );
+                });
+              });
+            },
+          ),
+
+          ListTile(
+            leading: const Icon(Icons.settings_outlined),
+            title: const Text("Settings"),
+            onTap: () {
+
+            },
+          ),
+
+          ListTile(
+            leading: const Icon(Icons.logout_outlined),
+            title: const Text("Log Out"),
+            onTap: () {
+              Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context1) => LoginView()), (route) => false);
+              var storage = FlutterSecureStorage();
+              storage.delete(key: AUTH_TOKEN_KEY);
+            },
+          ),
+
+          const Padding(padding: EdgeInsets.all(10), child: Text("CrowMessenger <3"),)
+        ],
+      ),
     );
   }
 
@@ -263,11 +453,12 @@ class _ChatViewState extends State<ChatView> {
         onPressed: _incrementCounter,
         tooltip: 'Increment',
         child: const Icon(Icons.add),
-      )
+      ),
+      drawer: createDrawer(),
     );
   }
 
-  void ShowNewMessageDialog(User user) {
+  void  ShowNewMessageDialog(User user) {
     var textFieldController = TextEditingController();
     textFieldController.text = "Greatings!";
 
@@ -292,7 +483,9 @@ class _ChatViewState extends State<ChatView> {
                                     user.id,
                                     textFieldController.text,
                                     onResponse: (response) {
-                                      OpenChat(Chat(response.chatId, 0, user.nickName, user.profileImage, [widget.account.user, user] ));
+                                      var chat = Chat(response.chatId, 0, user.nickName, user.profileImage, [widget.account.user, user] );
+                                      widget.account.chats.add(chat);
+                                      OpenChat(chat);
                                     });
                                 Navigator.pop(context);
 
