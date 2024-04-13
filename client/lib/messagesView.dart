@@ -1,6 +1,12 @@
+import 'dart:io';
+
 import 'package:client/auth.dart';
 import 'package:client/authorizedView.dart';
+import 'package:client/components.dart';
 import 'package:client/data.dart';
+import 'package:client/helpers.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'consts.dart';
@@ -17,6 +23,7 @@ class MessagesView extends AuthorizedView {
 class _MessagesViewState extends State<MessagesView> {
   late TextEditingController _controller;
   final ScrollController _scrollController = ScrollController();
+  late List<File> _atachments = List<File>.empty(growable: true);
 
   List<MessageResponse> messages = [];
 
@@ -54,58 +61,61 @@ class _MessagesViewState extends State<MessagesView> {
   }
 
   Widget drawMessage(MessageResponse message) {
-
-    Widget getTime() {
-      return //message.imageLink == null ?
-        Text(
-            "${message.createdAt.hour}:${message.createdAt.minute}",
-            style: Theme.of(context).textTheme.bodySmall);
-      // : Row(mainAxisAlignment: MainAxisAlignment.end, children: [Text(
-      // "${message.createdAt.hour}:${message.createdAt.minute}",
-      // style: Theme.of(context).textTheme.bodySmall)],);
-    }
-
     Widget getText() {
       return Column(
-        crossAxisAlignment: /*message.imageLink == null ?*/ CrossAxisAlignment.end,// : CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Padding(
-              padding: const EdgeInsets.fromLTRB(11, 5, 11, 0),
+              padding: const EdgeInsets.fromLTRB(11, 5, 11, 14),
               child: Text(message.message!)),
-          Padding(
-              padding: const EdgeInsets.fromLTRB(7.5, 0, 7.5, 0),
-              child: getTime())
         ],
       );
     }
 
+    var widgets = List<Widget>.empty(growable: true);
+    if(message.attachments.isEmpty == false) {
+      var stack = List<Widget>.empty(growable: true);
+      var maxWidth = BoxConstraints(maxWidth: MediaQuery.of(context).size.width - 100).maxWidth/2-9;
+      stack.add(ClipRRect(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12), bottom: Radius.circular(message.message == null ? 12 : 0)),
+        child: GridImages(message.attachments, context),
+        ));
+
+      widgets.add(Stack(children: stack,));
+    }
+
+    if(message.message != null && message.message!.isEmpty == false) {
+      widgets.add(getText());
+    } else {
+    }
 
     return Align(
         alignment: message.sender!.id == widget.account.user.id ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
-          constraints:
-          BoxConstraints(maxWidth: MediaQuery.of(context).size.width - 100),
+          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width - 100),
           child: Padding(
             padding: const EdgeInsets.all(5),
             child: Card(
                 color: message.sender!.id == widget.account.user.id
                     ? Theme.of(context).colorScheme.inversePrimary
                     : Theme.of(context).colorScheme.primary,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children:// message.imageLink != null
-                  // ? [
-                  //     ClipRRect(
-                  //       borderRadius: const BorderRadius.vertical(top: Radius.circular(12), bottom: Radius.circular(0)),
-                  //       child:
-                  //           Image(image: NetworkImage(message.imageLink!)),
-                  //     ),
-                  //     getText(),
-                  //   ] :
-                  [
-                    getText(),
-                  ],
-                )),
+                child: Stack(children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: widgets,
+                  ),
+                  Positioned(
+                    right: 0.0,
+                    bottom: 0.0,
+                    child: Align(
+                      alignment: Alignment.bottomRight,
+                      child: Padding(padding: const EdgeInsets.fromLTRB(0, 0, 6, 0),
+                        child: Text(
+                            getShortDate(message.createdAt),
+                            style: Theme.of(context).textTheme.bodySmall)),
+                    ),
+                  )
+                ])),
           ),
         ));
   }
@@ -113,9 +123,9 @@ class _MessagesViewState extends State<MessagesView> {
   List<Widget> drawMessages(Chat userId) {
     List<Widget> widgets = [];
     for (int i = 0; i < messages.length; i++) {
-      if(messages[i].message == null) {
-        continue;
-      }
+      // if(messages[i].message == null) {
+      //   continue;
+      // }
       widgets.add(drawMessage(messages[i]));
     }
     return widgets;
@@ -213,7 +223,19 @@ class _MessagesViewState extends State<MessagesView> {
     return Row(
       children: [
         IconButton(
-            onPressed: () {}, icon: const Icon(Icons.add_circle_outline)),
+            onPressed: () async {
+              FilePickerResult? result = await FilePicker.platform.pickFiles();
+
+              if (result == null) {
+                return;
+              }
+
+              File file = File(result.files.first.path!);
+
+              setState(() {
+                _atachments.add(file);
+              });
+            }, icon: const Icon(Icons.add_circle_outline)),
         Expanded(
             child: TextField(
               controller: _controller,
@@ -221,10 +243,12 @@ class _MessagesViewState extends State<MessagesView> {
         IconButton(
             onPressed: () {
               setState(() {
-                if(_controller.text.isEmpty) {
+                if(_controller.text.isEmpty && _atachments.isEmpty) {
                   return;
                 }
-                widget.account.messageHelper.SendMessageByChatID(widget.currentChat.id, _controller.text);
+                widget.account.messageHelper
+                    .SendMessageByChatID(widget.currentChat.id, _controller.text, attachments: _atachments);
+                _atachments.clear();
               });
             },
             icon: const Icon(Icons.send))
@@ -238,6 +262,44 @@ class _MessagesViewState extends State<MessagesView> {
       duration: Duration(milliseconds: milliseconds),
       curve: Curves.fastOutSlowIn,
     );
+  }
+
+  List<Widget> getAttachmentsWidgets() {
+    var list = List<Widget>.empty(growable: true);
+    for(int i = 0; i < _atachments.length; i++) {
+      list.add(Padding(padding: const EdgeInsets.all(5),
+        child: Stack(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image(image: FileImage(_atachments[i]),
+                width: 64, height: 64,
+                fit: BoxFit.cover,),
+            ),
+
+            Positioned(
+              right: 0.0,
+              child: GestureDetector(
+                onTap: (){
+                  setState(() {
+                    _atachments.removeAt(i);
+                  });
+                },
+                child: const Align(
+                  alignment: Alignment.topRight,
+                  child: Padding(padding: EdgeInsets.all(3),
+                    child: CircleAvatar(
+                      radius: 14.0,
+                      backgroundColor: Colors.white,
+                      child: Icon(Icons.close, color: Colors.black),
+                    ),),
+                ),
+              ),
+            ),
+          ],
+        ),));
+    }
+    return list;
   }
 
   @override
@@ -258,6 +320,11 @@ class _MessagesViewState extends State<MessagesView> {
       bottomNavigationBar: Padding(
           padding: MediaQuery.of(context).viewInsets,
           child: drawBottomBar()),
+      bottomSheet: SingleChildScrollView(
+        child: Row(
+          children: getAttachmentsWidgets(),
+        ),
+      ),
     );
   }
 }

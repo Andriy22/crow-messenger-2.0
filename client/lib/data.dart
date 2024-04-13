@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
@@ -28,6 +29,7 @@ class Chat {
   String title;
   String? profileImage;
   List<User> users;
+  MessageResponse? lastMessage;
 
   Chat(this.id, this.chatType, this.title, this.profileImage, this.users);
 
@@ -35,7 +37,8 @@ class Chat {
         title = map["title"],
         chatType = map["chatType"],
         profileImage = map["profileImg"],
-        users =  (map["users"] as List).map((x) => User.fromJson(x)).toList();
+        users = (map["users"] as List).map((x) => User.fromJson(x)).toList(),
+        lastMessage = MessageResponse.fromDynamic(map["lastMessage"]);
 }
 
 class MessageRequest {
@@ -48,12 +51,6 @@ class MessageRequest {
 
   MessageRequest.Reply(this.id, this.message, this.messageType, this.receiverId, this.senderId, this.replyMessageId);
   MessageRequest(this.id, this.message, this.messageType, this.receiverId, this.senderId);
-
-
-  // @override
-  // String toString() {
-  //   return "{${id}, ${message}";
-  // }
 }
 
 class MessageResponse  {
@@ -62,20 +59,29 @@ class MessageResponse  {
   int messageType;
   User? sender;
   DateTime createdAt;
+  List<String> attachments;
   int chatId;
   int? replyMessageId;
   DateTime? seenAt;
 
-  MessageResponse(this.id, this.message, this.messageType, this.chatId, this.createdAt, this.sender, this.replyMessageId, this.seenAt);
+  MessageResponse(this.id, this.message, this.messageType, this.chatId, this.createdAt, this.attachments, this.sender, this.replyMessageId, this.seenAt);
 
   MessageResponse.fromDynamic(dynamic map) : id = map["id"],
     message = map["message"],
     messageType = map["messageType"],
     sender = User.fromJson(map["sender"]),
     createdAt = DateTime.parse(map["createdAt"]),
+    attachments = List<String>.empty(growable: true),
     chatId = map["chatId"],
     replyMessageId = map["replyMessageId"],
-    seenAt = map["seenAt"];
+    seenAt = map["seenAt"] {
+    print("generating attachments");
+    var attachments = map["attachments"] as List;
+    for(int i = 0; i < attachments.length; i++) {
+      print(attachments[i]);
+      this.attachments.add(attachments[i]["attachemntPath"] as String);
+    }
+  }
 }
 
 class MessageHelper {
@@ -83,21 +89,30 @@ class MessageHelper {
 
   MessageHelper(this.user);
 
-  SendMessageByChatID(int chatId, String message, {void Function(MessageResponse)? onResponse = null}) {
-    var auth = http.post(
-      Uri.parse('${URL}/api/chat/send-message-to-chat'),
-      headers: <String, String>{
+  SendMessageByChatID(int chatId, String message, {List<File>? attachments = null, void Function(MessageResponse)? onResponse = null}) async {
+    try {
+      var auth = http.MultipartRequest("POST", Uri.parse('${URL}/api/chat/send-message-to-chat'));
+      auth.headers.addAll(<String, String>{
         'Authorization': "bearer ${user!.accessToken}",
-      },
-      body: <String, dynamic>{
+      });
+
+      auth.fields.addAll(<String, String>{
         "message": message,
         "messageType": 0.toString(),
         "chatId": chatId.toString(),
-      },
-    ).then((value) {
-      print("SUKA " + MessageResponse.fromDynamic(jsonDecode(value.body)).id.toString());
-      onResponse!(MessageResponse.fromDynamic(jsonDecode(value.body)));
-    }).catchError((x) => print(x));
+      });
+
+      attachments ?? List<File>.empty(growable: true);
+      for(int i = 0; i < attachments!.length; i++) {
+        auth.files.add(await http.MultipartFile.fromPath("attachments", attachments[i].path));
+      }
+      var response = await http.Response.fromStream(await auth.send());
+      print(response.body);
+
+      onResponse!(MessageResponse.fromDynamic(jsonDecode(response.body)));
+    }catch(ex) {
+      print(ex);
+    }
   }
 
   SendMessageByUserID(String receiverId, String message, {void Function(MessageResponse)? onResponse = null}) {

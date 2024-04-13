@@ -13,7 +13,8 @@ namespace BLL.Common.Mapper
                 .ForMember(x => x.ReplyMessageId, opt => opt.MapFrom(x => x.ReplyMessageId))
                 .ForMember(x => x.MessageType, opt => opt.MapFrom(x => x.MessageType))
                 .ForMember(x => x.Text, opt => opt.MapFrom(x => x.Message))
-                .ForMember(x => x.CreatedById, opt => opt.MapFrom(x => x.SenderId));
+                .ForMember(x => x.CreatedById, opt => opt.MapFrom(x => x.SenderId))
+                .ForMember(x => x.Attachments, opt => opt.Ignore());
 
             CreateMap<AppUser, MessageUserResult>()
                 .ForMember(x => x.Id, opt => opt.MapFrom(x => x.Id))

@@ -18,6 +18,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/src/media_type.dart';
 
 import 'consts.dart';
+import 'helpers.dart';
 
 class ChatView extends AuthorizedView {
   ChatView(Account account) : super(account);
@@ -134,6 +135,22 @@ class _ChatViewState extends State<ChatView> {
   List<Widget> drawChats() {
     List<Widget> widgets = [];
     for (int i = 0; i < widget.account.chats.length; i++) {
+      var previewText = "";
+      var previewTime = "";
+
+      if(widget.account.chats[i].lastMessage != null) {
+        previewText = widget.account.chats[i].lastMessage!.sender!.id == widget.account.user.id
+            ? "You: ${widget.account.chats[i].lastMessage!.message}"
+            : "${widget.account.chats[i].lastMessage!.sender!.nickName}: ${widget.account.chats[i].lastMessage!.message}";
+
+        previewTime = getShortDate(widget.account.chats[i].lastMessage!.createdAt);
+      }
+
+      var previewLable = Text(
+        previewText,
+        overflow: TextOverflow.ellipsis,
+      );
+
       widgets.add(InkWell(
           splashColor: Colors.blue.withAlpha(30),
           onTap: () {
@@ -162,21 +179,13 @@ class _ChatViewState extends State<ChatView> {
                         Text(widget.account.chats[i].title,
                             style:
                             Theme.of(context).textTheme.labelLarge),
-                        Text(
-                          // messages[i][messages[i].length - 1].my
-                          //     ? "You: ${messages[i][messages[i].length - 1].message}"
-                          //     : messages[i][messages[i].length - 1]
-                          //     .message,
-                          "hi",
-                          overflow: TextOverflow.ellipsis,
-                        )
+
+                        previewLable
                       ],
                     ))),
             Expanded(
                 flex: 1,
-                child: Text(
-                  //"${messages[i][messages[i].length - 1].dateTime.hour}:${messages[i][messages[i].length - 1].dateTime.minute}"))
-                    "00:00"))
+                child: Text(previewTime))
           ])));
     }
     return widgets;

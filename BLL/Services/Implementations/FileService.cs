@@ -53,9 +53,9 @@ namespace BLL.Services.Implementations
 
         public async Task<List<string>> SaveFilesAsync(List<IFormFile> files, string directory)
         {
-            if (files == null || files.Any())
+            if (files == null || files.Any() == false)
             {
-                throw new ArgumentNullException(nameof(files));
+                return new List<string>();
             }
 
             List<string> savedFilesPaths = new List<string>();
@@ -77,7 +77,7 @@ namespace BLL.Services.Implementations
                 using (var fileStream = new FileStream(path, FileMode.Create))
                 {
                     await file.CopyToAsync(fileStream);
-                    savedFilesPaths.Add(path);
+                    savedFilesPaths.Add(fileName);
                 }
             }
 

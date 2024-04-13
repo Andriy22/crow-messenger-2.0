@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:signalr_netcore/signalr_client.dart';
@@ -50,7 +49,8 @@ class Account {
       account.chats.clear();
       try {
         for(int i = 0; i < (chatList.length as int); i++) {
-          account.chats.add(Chat.fromDynamic(chatList[i]));
+          var chat = Chat.fromDynamic(chatList[i]);
+          account.chats.add(chat);
         }
         account.onGetChats(account.chats);
       } catch(ex) {

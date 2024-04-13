@@ -39,6 +39,8 @@ dependencies:
   file_picker:
   crop_image:
   flutter_secure_storage:
+  intl:
+  photo_view:
   http: ^1.2.1
 
 dev_dependencies:
