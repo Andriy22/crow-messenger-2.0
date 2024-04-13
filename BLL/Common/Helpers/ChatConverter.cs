@@ -26,8 +26,8 @@ namespace BLL.Common.Helpers
                     Bio = u?.User?.BIO,
                     Status = u?.User?.Status,
                 }).ToList(),
-                ProfileImg = chat.ChatType != ChatType.Private ? chat.ImagePath : chat.Users.FirstOrDefault(x => x.UserId != userId)!.User!.ProfileImg!,
-                Title = chat.ChatType != ChatType.Private ? chat.Title : chat.Users.FirstOrDefault(x => x.UserId != userId)!.User!.NickName!,
+                ProfileImg = chat.ChatType != ChatType.Private ? chat.ImagePath : chat.Users.FirstOrDefault(x => x.UserId != userId)?.User?.ProfileImg ?? "",
+                Title = chat.ChatType != ChatType.Private ? chat.Title : chat.Users.FirstOrDefault(x => x.UserId != userId)?.User?.NickName ?? "Saved messages",
                 LastMessage = lastMessage
             };
         }

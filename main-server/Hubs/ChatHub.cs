@@ -16,16 +16,16 @@ namespace API.Hubs
         private readonly IChatService _privateChatService;
         private readonly IMessageService _messageService;
         private readonly IUsersService _usersService;
-        private readonly UserManager<AppUser> _userManager;
+        private readonly IOnlineStatusService _onlineStatusService;
 
         private readonly static Dictionary<string, string> _activeUsers = new Dictionary<string, string>();
 
-        public ChatHub(IChatService privateChatService, UserManager<AppUser> userManager, IUsersService usersService, IMessageService messageService)
+        public ChatHub(IChatService privateChatService, IUsersService usersService, IMessageService messageService, IOnlineStatusService onlineStatusService)
         {
             _privateChatService = privateChatService;
-            _userManager = userManager;
             _usersService = usersService;
             _messageService = messageService;
+            _onlineStatusService = onlineStatusService;
         }
 
         [HubMethodName("get-my-chats")]
@@ -124,6 +124,16 @@ namespace API.Hubs
             await Clients.Caller.SendAsync("ReceivedChatMessages", await _messageService.GetChatMessagesAsync(chatId, ownerId));
         }
 
+        [HubMethodName("get-contacts-online")]
+        public async Task GetContactsOnlineAsync()
+        {
+            var ownerId = Context?.User?.Identity?.Name ?? throw new Exception("Not authorized");
+
+            var broadcastUsers = await _onlineStatusService.GetUsersIdsToBroadcastAsync(ownerId);
+
+            await Clients.Caller.SendAsync("UsersOnline", broadcastUsers.Where(x => _activeUsers.ContainsValue(x)).ToList());
+        }
+
         public override async Task OnConnectedAsync()
         {
             var ownerId = Context?.User?.Identity?.Name ?? throw new Exception("Not authorized");
@@ -137,7 +147,21 @@ namespace API.Hubs
                 await Groups.AddToGroupAsync(Context.ConnectionId, chat.Id.ToString());
             }
 
+            var broadcastUsers = await _onlineStatusService.GetUsersIdsToBroadcastAsync(ownerId);
+
+            foreach (var user in broadcastUsers)
+            {
+                if (_activeUsers.ContainsValue(user))
+                {
+                    await Clients.User(user).SendAsync("UserGoesOnline", ownerId);
+                }
+            }
+
+            await Clients.Caller.SendAsync("UsersOnline", broadcastUsers.Where(x => _activeUsers.ContainsValue(x)).ToList());
+
             await Clients.Caller.SendAsync("Connected");
+
+            await base.OnConnectedAsync();
         }
 
         public override async Task OnDisconnectedAsync(Exception? exception)
@@ -152,7 +176,21 @@ namespace API.Hubs
                 {
                     await Groups.RemoveFromGroupAsync(Context.ConnectionId, chat.Id.ToString());
                 }
+
+                var broadcastUsers = await _onlineStatusService.GetUsersIdsToBroadcastAsync(ownerId);
+
+                foreach (var user in broadcastUsers)
+                {
+                    if (_activeUsers.ContainsValue(user))
+                    {
+                        await Clients.User(user).SendAsync("UserGoesOffline", ownerId);
+                    }
+
+                }
+                _activeUsers.Remove(Context.ConnectionId);
             }
+
+            await base.OnDisconnectedAsync(exception);
         }
     }
 }
