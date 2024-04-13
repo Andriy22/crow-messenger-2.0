@@ -122,7 +122,7 @@ namespace BLL.Services.Implementations
         public async Task<MessageResult> SavePrivateChatMessageAsync(MessageDto message)
         {
             var users = new List<string>() { message.SenderId!, message.ReceiverId! };
-            var chat = await _chatRepository.GetQueryable(x => x.Users.All(u => users.Contains(u.UserId)) && !x.IsDeleted && x.ChatType == ChatType.Private)
+            var chat = await _chatRepository.GetQueryable(x => users.All(s => x.Users.Any(u => u.UserId == s)) && !x.IsDeleted && x.ChatType == ChatType.Private)
                 .Include(x => x.Users)
                 .FirstOrDefaultAsync();
 
