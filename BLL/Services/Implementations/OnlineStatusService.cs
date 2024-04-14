@@ -7,15 +7,15 @@ namespace BLL.Services.Implementations
 {
     public class OnlineStatusService : IOnlineStatusService
     {
-        private readonly IRepository<AppUser> _userRepository;
         private readonly IRepository<Chat> _chatRepository;
+        private readonly IUserRepository _userRepository;
 
-        public OnlineStatusService(IRepository<AppUser> userRepository, IRepository<Chat> chatRepository)
+        public OnlineStatusService(IRepository<Chat> chatRepository, IUserRepository userRepository)
         {
-            _userRepository = userRepository;
             _chatRepository = chatRepository;
+            _userRepository = userRepository;
         }
-       
+
         public async Task<List<string>> GetUsersIdsToBroadcastAsync(string userId)
         {
             var userIds = await _chatRepository
@@ -29,6 +29,13 @@ namespace BLL.Services.Implementations
             userIds.Remove(userId);
 
             return userIds;
+        }
+
+        public async Task SetUserLastOnline(string userId, DateTime? time)
+        {
+            var date = time ?? DateTime.Now;
+
+            await _userRepository.SetUserOnlineDate(userId, date);
         }
     }
 }

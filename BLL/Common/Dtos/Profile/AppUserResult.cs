@@ -7,5 +7,6 @@
         public required string ProfileImg { get; set; }
         public string? Bio { get; set; }
         public string? Status { get; set; }
+        public DateTime? LastOnline { get; set; }
     }
 }

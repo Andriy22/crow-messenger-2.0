@@ -19,6 +19,7 @@ namespace BLL.Common.Helpers
                     NickName = sender?.NickName ?? "",
                     ProfileImg = sender?.ProfileImg ?? "",
                     Role = role,
+                    LastOnline = sender?.LastOnline,
                 },
                 Id = dbMessage.Id,
                 CreatedAt = dbMessage.CreatedAt,

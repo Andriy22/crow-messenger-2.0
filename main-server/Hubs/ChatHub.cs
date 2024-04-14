@@ -147,6 +147,7 @@ namespace API.Hubs
                 await Groups.AddToGroupAsync(Context.ConnectionId, chat.Id.ToString());
             }
 
+            await _onlineStatusService.SetUserLastOnline(ownerId, DateTime.UtcNow);
             var broadcastUsers = await _onlineStatusService.GetUsersIdsToBroadcastAsync(ownerId);
 
             foreach (var user in broadcastUsers)
@@ -177,6 +178,7 @@ namespace API.Hubs
                     await Groups.RemoveFromGroupAsync(Context.ConnectionId, chat.Id.ToString());
                 }
 
+                await _onlineStatusService.SetUserLastOnline(ownerId, DateTime.UtcNow);
                 var broadcastUsers = await _onlineStatusService.GetUsersIdsToBroadcastAsync(ownerId);
 
                 foreach (var user in broadcastUsers)
@@ -185,8 +187,8 @@ namespace API.Hubs
                     {
                         await Clients.User(user).SendAsync("UserGoesOffline", ownerId);
                     }
-
                 }
+
                 _activeUsers.Remove(Context.ConnectionId);
             }
 

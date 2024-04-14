@@ -19,7 +19,8 @@ namespace BLL.Common.Mapper
             CreateMap<AppUser, MessageUserResult>()
                 .ForMember(x => x.Id, opt => opt.MapFrom(x => x.Id))
                 .ForMember(x => x.NickName, opt => opt.MapFrom(x => x.NickName))
-                .ForMember(x => x.ProfileImg, opt => opt.MapFrom(x => x.ProfileImg));
+                .ForMember(x => x.ProfileImg, opt => opt.MapFrom(x => x.ProfileImg))
+                .ForMember(x => x.LastOnline, opt => opt.MapFrom(x => x.LastOnline));
 
             CreateMap<AppUser, AppUserResult>();
         }

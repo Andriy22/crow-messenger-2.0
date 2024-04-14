@@ -8,5 +8,6 @@ namespace DAL.Entities
         public required string ProfileImg { get; set; }
         public string? Status { get; set; }
         public string? BIO { get; set; }
+        public DateTime? LastOnline { get; set; }
     }
 }

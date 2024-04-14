@@ -25,6 +25,7 @@ namespace BLL.Common.Helpers
                     Role = u?.Role ?? UserChatRoleType.None,
                     Bio = u?.User?.BIO,
                     Status = u?.User?.Status,
+                    LastOnline = u?.User?.LastOnline
                 }).ToList(),
                 ProfileImg = chat.ChatType != ChatType.Private ? chat.ImagePath : chat.Users.FirstOrDefault(x => x.UserId != userId)?.User?.ProfileImg ?? "",
                 Title = chat.ChatType != ChatType.Private ? chat.Title : chat.Users.FirstOrDefault(x => x.UserId != userId)?.User?.NickName ?? "Saved messages",
