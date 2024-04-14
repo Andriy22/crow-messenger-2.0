@@ -181,15 +181,18 @@ namespace API.Hubs
                 await _onlineStatusService.SetUserLastOnline(ownerId, DateTime.UtcNow);
                 var broadcastUsers = await _onlineStatusService.GetUsersIdsToBroadcastAsync(ownerId);
 
-                foreach (var user in broadcastUsers)
+                _activeUsers.Remove(Context.ConnectionId);
+
+                if (!_activeUsers.ContainsValue(ownerId))
                 {
-                    if (_activeUsers.ContainsValue(user))
+                    foreach (var user in broadcastUsers)
                     {
-                        await Clients.User(user).SendAsync("UserGoesOffline", ownerId);
+                        if (_activeUsers.ContainsValue(user))
+                        {
+                            await Clients.User(user).SendAsync("UserGoesOffline", ownerId);
+                        }
                     }
                 }
-
-                _activeUsers.Remove(Context.ConnectionId);
             }
 
             await base.OnDisconnectedAsync(exception);
